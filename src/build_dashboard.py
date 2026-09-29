@@ -19,7 +19,8 @@ TEMPLATE = r"""<!DOCTYPE html>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>门店经营看板 · AI 票据智能台账</title>
-<script src="vendor/echarts.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/echarts@5.5.1/dist/echarts.min.js"></script>
+<script>window.echarts||document.write('<script src="vendor/echarts.min.js"><\/script>');</script>
 <style>
   :root{--bg:#f4f6fa;--card:#fff;--ink:#1f2d3d;--muted:#7c8798;}
   *{box-sizing:border-box}
