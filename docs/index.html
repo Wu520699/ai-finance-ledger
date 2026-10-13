@@ -2,104 +2,138 @@
 <html lang="zh-CN">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width,initial-scale=1">
-<title>门店经营看板 · AI 票据智能台账</title>
-<script src="https://cdn.jsdelivr.net/npm/echarts@5.5.1/dist/echarts.min.js"></script>
-<script>window.echarts||document.write('<script src="vendor/echarts.min.js"><\/script>');</script>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>AI 票据智能台账 · 经营看板 v0.2</title>
+<script src="./vendor/echarts.min.js"></script>
 <style>
-  :root{--bg:#f4f6fa;--card:#fff;--ink:#1f2d3d;--muted:#7c8798;}
-  *{box-sizing:border-box}
-  body{margin:0;background:var(--bg);color:var(--ink);font-family:-apple-system,"PingFang SC","Microsoft YaHei",sans-serif;padding:14px 12px 40px}
-  header h1{font-size:19px;margin:6px 0 4px}
-  header p{margin:0 0 12px;color:var(--muted);font-size:12px}
-  .kpis{display:grid;grid-template-columns:repeat(2,1fr);gap:8px;margin-bottom:12px}
-  .kpi{background:var(--card);border-radius:12px;padding:10px 12px;box-shadow:0 1px 3px rgba(20,40,80,.06)}
-  .kpi .t{font-size:12px;color:var(--muted)}
-  .kpi .v{font-size:19px;font-weight:600;margin-top:4px}
-  .card{background:var(--card);border-radius:14px;padding:12px;margin-bottom:12px;box-shadow:0 1px 3px rgba(20,40,80,.06)}
-  .card h2{font-size:14px;margin:2px 0 8px;font-weight:600}
-  .chart{width:100%;height:250px}
-  footer{color:var(--muted);font-size:11px;text-align:center;margin-top:16px;line-height:1.7}
+  :root { --ink:#1f2937; --muted:#6b7280; --line:#e5e7eb; --bg:#f6f7f9; --accent:#2f6fed; }
+  * { box-sizing: border-box; }
+  body { margin:0; background:var(--bg); color:var(--ink);
+         font-family: -apple-system, "PingFang SC", "Microsoft YaHei", sans-serif; }
+  header { padding:22px 26px 6px; }
+  h1 { margin:0; font-size:21px; letter-spacing:.5px; }
+  .sub { margin:6px 0 0; color:var(--muted); font-size:13px; }
+  .kpis { display:grid; grid-template-columns:repeat(auto-fit,minmax(140px,1fr));
+          gap:12px; padding:16px 26px 4px; }
+  .kpi { background:#fff; border:1px solid var(--line); border-radius:12px; padding:14px 16px; }
+  .kpi .label { color:var(--muted); font-size:12px; }
+  .kpi .value { font-size:20px; font-weight:600; margin-top:6px; }
+  .kpi .value.warn { color:#c2410c; }
+  .grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(360px,1fr));
+          gap:12px; padding:12px 26px; }
+  .card { background:#fff; border:1px solid var(--line); border-radius:12px; padding:14px 16px 6px; }
+  .card h2 { margin:0 0 8px; font-size:14px; font-weight:600; color:var(--ink); }
+  .chart { width:100%; height:280px; }
+  .wide { grid-column:1/-1; }
+  table { width:100%; border-collapse:collapse; font-size:13px; }
+  th, td { text-align:left; padding:8px 6px; border-bottom:1px solid var(--line); }
+  th { color:var(--muted); font-weight:500; font-size:12px; }
+  .tag { display:inline-block; padding:1px 8px; border-radius:999px;
+         background:#fff1e6; color:#c2410c; font-size:12px; }
+  footer { padding:8px 26px 26px; color:var(--muted); font-size:12px; }
 </style>
 </head>
 <body>
 <header>
-  <h1 id="shop">门店经营看板</h1>
-  <p id="sub">数据来源：票据 AI 识别 + 自动入账</p>
+  <h1>AI 票据智能台账 · 经营看板 v0.2</h1>
+  <p class="sub">小微餐饮门店（业财融合实践）· 演示数据 · 生成于 2026-10-13 23:20</p>
 </header>
-<section class="kpis" id="kpis"></section>
-<div class="card"><h2>每日营业额与支出</h2><div id="c1" class="chart"></div></div>
-<div class="card"><h2>成本费用结构</h2><div id="c2" class="chart" style="height:280px"></div></div>
-<div class="card"><h2>每日净额与毛利率</h2><div id="c3" class="chart"></div></div>
-<div class="card"><h2>总收入 / 总支出 / 净现金流</h2><div id="c4" class="chart" style="height:220px"></div></div>
-<footer>AI 票据智能台账 · 业财融合实践<br>数据已脱敏，仅用于教学与竞赛展示</footer>
+<section class="kpis">
+  <div class="kpi"><div class="label">收入合计</div><div class="value">7968.20</div></div>
+  <div class="kpi"><div class="label">支出合计</div><div class="value">1644.40</div></div>
+  <div class="kpi"><div class="label">净额</div><div class="value">6323.80</div></div>
+  <div class="kpi"><div class="label">毛利率</div><div class="value">91.16%</div></div>
+  <div class="kpi"><div class="label">票据笔数</div><div class="value">33 笔</div></div>
+  <div class="kpi"><div class="label">有交易天数</div><div class="value">17 天</div></div>
+  <div class="kpi"><div class="label">日均支出</div><div class="value">96.73</div></div>
+  <div class="kpi"><div class="label">待复核条目</div><div class="value warn">4 条</div></div>
+</section>
+<div class="grid">
+  <div class="card"><h2>月度经营对比（收入 / 支出 / 净额）</h2><div id="c1" class="chart"></div></div>
+  <div class="card"><h2>支出结构（科目占比）</h2><div id="c2" class="chart"></div></div>
+  <div class="card"><h2>每日收支</h2><div id="c3" class="chart"></div></div>
+  <div class="card"><h2>现金日结与库存现金</h2><div id="c4" class="chart"></div></div>
+  <div class="card wide">
+    <h2>数据质量：待复核清单</h2>
+    <table><thead><tr><th>行号</th><th>问题类型</th><th>说明</th></tr></thead>
+    <tbody id="tb"></tbody></table>
+  </div>
+</div>
+<footer>票据数据由 AI 从收款截图与票据识别后导出，本页只做汇总与校验展示。</footer>
 <script>
-const D = {"shop": "烤馒头店", "range": "2026-09-01 ~ 2026-09-07", "days": ["2026-09-01", "2026-09-02", "2026-09-03", "2026-09-04", "2026-09-05", "2026-09-06", "2026-09-07"], "income": [1025.3, 521.0, 742.6, 668.4, 705.2, 892.1, 610.3], "expense": [78.0, 78.5, 150.0, 65.0, 42.3, 178.0, 200.0], "net": [947.3, 442.5, 592.6, 603.4, 662.9, 714.1, 410.3], "gross_rate": [92.4, 91.1, 100.0, 90.3, 100.0, 93.5, 100.0], "acc": [{"name": "主营业务成本-食材", "value": 247.5}, {"name": "销售费用-房租", "value": 200.0}, {"name": "管理费用-水电燃气", "value": 150.0}, {"name": "销售费用-人工", "value": 120.0}, {"name": "销售费用-平台佣金", "value": 42.3}, {"name": "主营业务成本-包装耗材", "value": 32.0}], "kpi": {"days": 7, "income": 5164.9, "expense": 791.8, "net": 4373.1, "gross_rate": 95.2, "avg_income": 737.84, "food_rate": 4.8}};
-const money = n => n.toLocaleString('zh-CN',{minimumFractionDigits:2,maximumFractionDigits:2});
-document.getElementById('shop').textContent = D.shop + ' 经营看板';
-document.getElementById('sub').textContent = '统计区间 ' + D.range + ' ｜ 共 ' + D.kpi.days + ' 天 ｜ 票据 AI 识别 + 自动入账';
-const kpiList = [
-  ['营业额合计', money(D.kpi.income) + ' 元'],
-  ['支出合计', money(D.kpi.expense) + ' 元'],
-  ['净现金流', money(D.kpi.net) + ' 元'],
-  ['毛利率', D.kpi.gross_rate.toFixed(1) + ' %'],
-  ['日均营业额', money(D.kpi.avg_income) + ' 元'],
-  ['食材占营业额', D.kpi.food_rate.toFixed(1) + ' %']
-];
-document.getElementById('kpis').innerHTML = kpiList.map(function(k){
-  return '<div class="kpi"><div class="t">' + k[0] + '</div><div class="v">' + k[1] + '</div></div>';
-}).join('');
+const D = {"kpi": {"income": 7968.2, "expense": 1644.4, "net": 6323.8, "gross": 0.9116}, "months": [{"月": "2026-08", "收入": 1575.3, "支出": 210.0, "净额": 1365.3, "毛利率": 0.8667, "环比": null}, {"月": "2026-09", "收入": 6392.9, "支出": 1494.4, "净额": 4898.5, "毛利率": 0.9227, "环比": 2.5879}], "accounts": [{"name": "主营业务成本-食材", "value": 704.1}, {"name": "其他支出", "value": 300.0}, {"name": "销售费用-房租", "value": 200.0}, {"name": "管理费用-水电燃气", "value": 150.0}, {"name": "销售费用-人工", "value": 120.0}, {"name": "管理费用-设备维修", "value": 96.0}, {"name": "销售费用-平台佣金", "value": 42.3}, {"name": "主营业务成本-包装耗材", "value": 32.0}], "daily": [{"日期": "2026-08-28", "收入": 412.0, "支出": 78.0}, {"日期": "2026-08-29", "收入": 538.5, "支出": 0.0}, {"日期": "2026-08-30", "收入": 0.0, "支出": 132.0}, {"日期": "2026-08-31", "收入": 624.8, "支出": 0.0}, {"日期": "2026-09-01", "收入": 1025.3, "支出": 78.0}, {"日期": "2026-09-02", "收入": 521.0, "支出": 78.5}, {"日期": "2026-09-03", "收入": 742.6, "支出": 150.0}, {"日期": "2026-09-04", "收入": 668.4, "支出": 130.0}, {"日期": "2026-09-05", "收入": 705.2, "支出": 42.3}, {"日期": "2026-09-06", "收入": 892.1, "支出": 178.0}, {"日期": "2026-09-07", "收入": 610.3, "支出": 200.0}, {"日期": "2026-09-08", "收入": 0.0, "支出": 60.0}, {"日期": "2026-09-09", "收入": 0.0, "支出": 88.0}, {"日期": "2026-09-10", "收入": 518.0, "支出": 96.0}, {"日期": "2026-09-11", "收入": 447.0, "支出": 93.6}, {"日期": "2026-09-12", "收入": 0.0, "支出": 300.0}, {"日期": "2026/09/08", "收入": 263.0, "支出": 0.0}], "cash": [{"日期": "2026-09-02", "现金收入": 0.0, "现金支出": 32.0, "累计库存": -32.0}, {"日期": "2026-09-06", "现金收入": 0.0, "现金支出": 120.0, "累计库存": -152.0}, {"日期": "2026-09-12", "现金收入": 0.0, "现金支出": 300.0, "累计库存": -452.0}, {"日期": "2026/09/08", "现金收入": 263.0, "现金支出": 0.0, "累计库存": -189.0}], "issues": [{"行号": 26, "类型": "日期格式异常", "说明": "2026/09/08"}, {"行号": 27, "类型": "收付方向异常", "说明": "支出"}, {"行号": 28, "类型": "金额无法解析", "说明": "空"}, {"行号": 18, "类型": "票据号重复", "说明": "FP20260904001（另见第 17 行）"}, {"行号": 18, "类型": "同一张图对应多笔", "说明": "IMG_1011.jpg"}, {"行号": "", "类型": "库存现金出现负数", "说明": "2026-09-02 累计 -32.0 元"}, {"行号": "", "类型": "库存现金出现负数", "说明": "2026-09-06 累计 -152.0 元"}, {"行号": "", "类型": "库存现金出现负数", "说明": "2026-09-12 累计 -452.0 元"}, {"行号": "", "类型": "库存现金出现负数", "说明": "2026/09/08 累计 -189.0 元"}]};
+const money = v => v.toLocaleString('zh-CN', {minimumFractionDigits:2, maximumFractionDigits:2});
+const axisStyle = {axisLine:{lineStyle:{color:'#d1d5db'}}, axisLabel:{color:'#6b7280', fontSize:11},
+                   splitLine:{lineStyle:{color:'#f0f1f3'}}};
 
-const base = {color:['#3b6cf6','#e8663c','#22a06b','#8b5cf6','#f4b740','#12b5cb'], textStyle:{fontSize:11}};
-const c1 = echarts.init(document.getElementById('c1'));
-c1.setOption(Object.assign({}, base, {
-  tooltip:{trigger:'axis'}, legend:{top:0,itemWidth:10,itemHeight:8,textStyle:{fontSize:11}},
-  grid:{left:46,right:12,top:34,bottom:26},
-  xAxis:{type:'category',data:D.days.map(function(d){return d.slice(5)}),axisLabel:{fontSize:10}},
-  yAxis:{type:'value',axisLabel:{fontSize:10}},
+// 1. 月度对比
+echarts.init(document.getElementById('c1')).setOption({
+  tooltip:{trigger:'axis'},
+  legend:{data:['收入','支出','净额'], bottom:0, textStyle:{fontSize:11}},
+  grid:{left:52, right:16, top:16, bottom:44},
+  xAxis:{type:'category', data:D.months.map(m=>m.月), ...axisStyle},
+  yAxis:{type:'value', ...axisStyle},
   series:[
-    {name:'营业额',type:'bar',data:D.income,itemStyle:{borderRadius:[4,4,0,0]}},
-    {name:'支出',type:'bar',data:D.expense,itemStyle:{borderRadius:[4,4,0,0]}}
+    {name:'收入', type:'bar', barWidth:18, itemStyle:{color:'#2f6fed'}, data:D.months.map(m=>m.收入)},
+    {name:'支出', type:'bar', barWidth:18, itemStyle:{color:'#f59e0b'}, data:D.months.map(m=>m.支出)},
+    {name:'净额', type:'line', smooth:true, symbolSize:7, itemStyle:{color:'#059669'},
+     label:{show:true, fontSize:10, formatter:p=>money(p.value)}, data:D.months.map(m=>m.净额)}
   ]
-}));
+});
 
-const c2 = echarts.init(document.getElementById('c2'));
-c2.setOption(Object.assign({}, base, {
-  tooltip:{trigger:'item',formatter:'{b}<br/>{c} 元 ({d}%)'},
-  legend:{bottom:0,itemWidth:10,itemHeight:8,textStyle:{fontSize:10}},
-  series:[{type:'pie',radius:['42%','68%'],center:['50%','42%'],
-    label:{fontSize:10,formatter:'{b}\n{d}%'},
-    data:D.acc}]
-}));
+// 2. 支出结构
+echarts.init(document.getElementById('c2')).setOption({
+  tooltip:{trigger:'item', formatter:p=>p.name+'：'+money(p.value)+' 元（'+p.percent+'%）'},
+  legend:{bottom:0, type:'scroll', textStyle:{fontSize:11}},
+  series:[{type:'pie', radius:['38%','62%'], center:['50%','44%'],
+    itemStyle:{borderColor:'#fff', borderWidth:2},
+    label:{fontSize:11, formatter:'{b}\n{d}%'},
+    data:D.accounts}]
+});
 
-const c3 = echarts.init(document.getElementById('c3'));
-c3.setOption(Object.assign({}, base, {
-  tooltip:{trigger:'axis'}, legend:{top:0,itemWidth:10,itemHeight:8,textStyle:{fontSize:11}},
-  grid:{left:46,right:44,top:34,bottom:26},
-  xAxis:{type:'category',data:D.days.map(function(d){return d.slice(5)}),axisLabel:{fontSize:10}},
-  yAxis:[{type:'value',name:'净额',axisLabel:{fontSize:10}},
-         {type:'value',name:'毛利率%',axisLabel:{fontSize:10}}],
+// 3. 每日收支
+echarts.init(document.getElementById('c3')).setOption({
+  tooltip:{trigger:'axis'},
+  legend:{data:['收入','支出','当日净额'], bottom:0, textStyle:{fontSize:11}},
+  grid:{left:52, right:16, top:16, bottom:44},
+  xAxis:{type:'category', data:D.daily.map(d=>d.日期.slice(5)), ...axisStyle},
+  yAxis:{type:'value', ...axisStyle},
   series:[
-    {name:'当日净额',type:'line',smooth:true,areaStyle:{opacity:.12},data:D.net},
-    {name:'毛利率%',type:'line',yAxisIndex:1,smooth:true,data:D.gross_rate}
+    {name:'收入', type:'bar', stack:'io', barWidth:14, itemStyle:{color:'#2f6fed'}, data:D.daily.map(d=>d.收入)},
+    {name:'支出', type:'bar', stack:'io', barWidth:14, itemStyle:{color:'#f59e0b'}, data:D.daily.map(d=>d.支出)},
+    {name:'当日净额', type:'line', smooth:true, symbolSize:5, itemStyle:{color:'#059669'},
+     data:D.daily.map(d=>+(d.收入-d.支出).toFixed(2))}
   ]
-}));
+});
 
-const c4 = echarts.init(document.getElementById('c4'));
-c4.setOption(Object.assign({}, base, {
-  tooltip:{trigger:'axis',axisPointer:{type:'shadow'}},
-  grid:{left:56,right:14,top:20,bottom:26},
-  xAxis:{type:'category',data:['总收入','总支出','净现金流'],axisLabel:{fontSize:11}},
-  yAxis:{type:'value',axisLabel:{fontSize:10}},
-  series:[{type:'bar',barWidth:'42%',
-    label:{show:true,position:'top',fontSize:11},
-    data:[
-      {value:D.kpi.income,itemStyle:{color:'#3b6cf6'}},
-      {value:D.kpi.expense,itemStyle:{color:'#e8663c'}},
-      {value:D.kpi.net,itemStyle:{color:'#22a06b'}}
-    ]}]
-}));
-window.addEventListener('resize',function(){[c1,c2,c3,c4].forEach(function(c){c.resize()})});
+// 4. 现金日结与库存
+echarts.init(document.getElementById('c4')).setOption({
+  tooltip:{trigger:'axis'},
+  legend:{data:['现金收入','现金支出','累计库存'], bottom:0, textStyle:{fontSize:11}},
+  grid:{left:52, right:16, top:16, bottom:44},
+  xAxis:{type:'category', data:D.cash.map(c=>c.日期.slice(5)), ...axisStyle},
+  yAxis:{type:'value', ...axisStyle},
+  series:[
+    {name:'现金收入', type:'bar', barWidth:14, itemStyle:{color:'#93c5fd'}, data:D.cash.map(c=>c.现金收入)},
+    {name:'现金支出', type:'bar', barWidth:14, itemStyle:{color:'#fdba74'}, data:D.cash.map(c=>c.现金支出)},
+    {name:'累计库存', type:'line', smooth:true, symbolSize:6, itemStyle:{color:'#dc2626'},
+     areaStyle:{color:'rgba(220,38,38,.08)'},
+     markLine:{silent:true, symbol:'none', lineStyle:{color:'#dc2626', type:'dashed'},
+       data:[{yAxis:0, label:{formatter:'现金为零', fontSize:10}}]},
+     data:D.cash.map(c=>c.累计库存)}
+  ]
+});
+
+// 5. 待复核清单
+const tb = document.getElementById('tb');
+D.issues.forEach(function(i){
+  const tr = document.createElement('tr');
+  tr.innerHTML = '<td>'+(i.行号||'—')+'</td><td><span class="tag">'+i.类型+'</span></td><td>'+(i.说明||'')+'</td>';
+  tb.appendChild(tr);
+});
+window.addEventListener('resize', function(){
+  document.querySelectorAll('.chart').forEach(function(el){ echarts.getInstanceByDom(el).resize(); });
+});
 </script>
 </body>
 </html>
