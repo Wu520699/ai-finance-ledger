@@ -1,4 +1,4 @@
-# AI 票据智能台账（业财融合实践 v0.1）
+# AI 票据智能台账（业财融合实践 v0.2）
 
 面向小微餐饮门店的「票据识别 → 自动入账 → 经营复盘」小工具。
 职业方向：智能财务 / 业财融合。
@@ -41,12 +41,12 @@ python3 src/build_ledger.py
 `src/build_ledger_v2.py`，输出 `out/台账_v2.xlsx`（6 张表）：
 
 - **数据质量校验与「待复核清单」**：重复票号、疑似重复记录（日期+金额+摘要）、日期格式异常、收付方向异常、金额缺失、同一张图对应多笔
-- **现金日结与库存现金校验**：现金收付逐日结平，累计为负自动报警
+- **现金日结与库存现金校验**：现金收付逐日结平，累计为负自动报警（可加 --cash-begin 指定期初库存现金）
 - **月度汇总**：收入 / 支出 / 净额 / 食材成本 / 毛利率 / 净额环比
 - 明细台账新增「票据号」「校验」列，可按票号追溯、按行复核
 
 ```bash
-python3 src/build_ledger_v2.py --src data/raw_tickets_v2.csv --out out/台账_v2.xlsx
+python3 src/build_ledger_v2.py --src data/raw_tickets_v2.csv --out out/台账_v2.xlsx --cash-begin 300
 ```
 
 ## 待做（v0.3）
