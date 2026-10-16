@@ -13,14 +13,21 @@ AI 票据智能台账 v0.2（业财融合实践 · 小微餐饮）
 """
 import argparse
 import csv
+import math
 import os
 from collections import defaultdict
 from datetime import datetime
 
 from openpyxl import Workbook
 from openpyxl.styles import Alignment, Font, PatternFill
+from openpyxl.utils import get_column_letter
 
 BASE = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+DEFAULT_SRC = os.path.join(BASE, "data", "raw_tickets.csv")
+DEFAULT_OUT = os.path.join(BASE, "out", "台账_v2.xlsx")
+DATE_FORMATS = ("%Y-%m-%d", "%Y/%m/%d", "%Y.%m.%d", "%Y年%m月%d日")
+MONEY_FMT = "#,##0.00"
+PERCENT_FMT = "0.00%"
 
 # ---------- 科目映射：小微餐饮最小科目集 ----------
 EXPENSE_RULES = [
@@ -50,11 +57,33 @@ def classify(direction, summary):
 
 
 def parse_amount(text):
-    try:
-        v = float(str(text).replace(",", "").strip())
-        return v
-    except Exception:
+    """宽口径解析金额：去空白 / 千分位 / 常见币种符号；非法或非有限值返回 None。"""
+    s = str(text if text is not None else "").replace(",", "").replace("，", "").strip()
+    for ch in ("￥", "¥", "元", "$"):
+        s = s.replace(ch, "")
+    s = s.strip()
+    if not s:
         return None
+    try:
+        v = float(s)
+    except ValueError:
+        return None
+    if not math.isfinite(v):
+        return None
+    return v
+
+
+def parse_date(text):
+    """解析常见日期写法，返回 (标准化为 YYYY-MM-DD 的日期, 是否合法)。"""
+    s = (text or "").strip()
+    if not s:
+        return "", False
+    for fmt in DATE_FORMATS:
+        try:
+            return datetime.strptime(s, fmt).strftime("%Y-%m-%d"), True
+        except ValueError:
+            continue
+    return s, False
 
 
 def load(src):
@@ -62,6 +91,7 @@ def load(src):
     rows, issues = [], []
     with open(src, "r", encoding="utf-8-sig", newline="") as f:
         for idx, r in enumerate(csv.DictReader(f), start=2):
+            r = r or {}
             raw_date = (r.get("日期") or "").strip()
             summary = (r.get("摘要") or "").strip()
             direction = (r.get("收付") or "").strip()
@@ -72,13 +102,11 @@ def load(src):
             if not raw_date and not summary:
                 continue
 
-            if raw_date:
-                try:
-                    datetime.strptime(raw_date, "%Y-%m-%d")
-                except Exception:
-                    issues.append((idx, "日期格式异常", raw_date))
-            else:
+            date, date_ok = parse_date(raw_date)
+            if not raw_date:
                 issues.append((idx, "日期为空", ""))
+            elif not date_ok:
+                issues.append((idx, "日期格式异常", raw_date))
 
             if direction not in ("收", "支"):
                 issues.append((idx, "收付方向异常", direction or "空"))
@@ -92,8 +120,8 @@ def load(src):
 
             rows.append({
                 "行号": idx,
-                "日期": raw_date,
-                "月份": raw_date[:7].replace("/", "-") if len(raw_date) >= 7 else "未知",
+                "日期": date,
+                "月份": date[:7] if date_ok else "未知",
                 "摘要": summary,
                 "收付": direction,
                 "金额": amt,
@@ -137,8 +165,8 @@ def load(src):
     return rows, issues
 
 
-def cash_check(rows, issues):
-    """现金日结：逐日结平，累计不能为负"""
+def cash_check(rows, issues, begin=0.0):
+    """现金日结：逐日结平，累计不能为负（begin 为期初库存现金）"""
     days = defaultdict(lambda: [0.0, 0.0])
     for r in rows:
         if any(k in r["支付方式"] for k in CASH_KEYS):
@@ -146,7 +174,7 @@ def cash_check(rows, issues):
                 days[r["日期"]][0] += r["金额"]
             elif r["收付"] == "支":
                 days[r["日期"]][1] += r["金额"]
-    out, balance = [], 0.0
+    out, balance = [], float(begin)
     for d in sorted(days):
         inc, exp = days[d]
         balance += inc - exp
@@ -194,8 +222,14 @@ def write_excel(path, rows, issues, cash, months, kpi):
             ws.append(d)
         ws.freeze_panes = "A2"
         for i, w in enumerate(widths or [], start=1):
-            ws.column_dimensions[chr(64 + i)].width = w
+            ws.column_dimensions[get_column_letter(i)].width = w
         return ws
+
+    def numfmt(ws, cols, fmt):
+        """给指定列（字母）去掉表头后的单元格设置数字格式。"""
+        for col in cols:
+            for cell in list(ws[col])[1:]:
+                cell.number_format = fmt
 
     # 明细台账
     ws = wb.active
@@ -211,6 +245,7 @@ def write_excel(path, rows, issues, cash, months, kpi):
     ws.freeze_panes = "A2"
     for col, w in zip("ABCDEFGHIJ", [6, 12, 22, 6, 10, 12, 22, 20, 14, 10]):
         ws.column_dimensions[col].width = w
+    numfmt(ws, ["E"], MONEY_FMT)
 
     # 待复核清单
     sheet("待复核清单", ["行号", "问题类型", "说明"],
@@ -222,22 +257,27 @@ def write_excel(path, rows, issues, cash, months, kpi):
         if r["收付"] == "支":
             by_acc[r["科目"]] += r["金额"]
     total_exp = sum(by_acc.values()) or 1.0
-    sheet("科目汇总", ["支出科目", "金额", "占比"],
-          [[k, round(v, 2), round(v / total_exp, 4)] for k, v in sorted(by_acc.items(), key=lambda x: -x[1])],
-          [24, 12, 10])
+    ws_acc = sheet("科目汇总", ["支出科目", "金额", "占比"],
+                   [[k, round(v, 2), round(v / total_exp, 4)] for k, v in sorted(by_acc.items(), key=lambda x: -x[1])],
+                   [24, 12, 10])
+    numfmt(ws_acc, ["B"], MONEY_FMT)
+    numfmt(ws_acc, ["C"], PERCENT_FMT)
 
     # 月度汇总
-    sheet("月度汇总", ["月份", "收入", "支出", "净额", "食材成本", "毛利率", "净额环比"],
-          [[m["月份"], round(m["收入"], 2), round(m["支出"], 2), round(m["净额"], 2),
-            round(m["食材成本"], 2), round(m["毛利率"], 4),
-            ("-" if m["净额环比"] is None else round(m["净额环比"], 4))] for m in months],
-          [10, 12, 12, 12, 12, 10, 12])
+    ws_month = sheet("月度汇总", ["月份", "收入", "支出", "净额", "食材成本", "毛利率", "净额环比"],
+                     [[m["月份"], round(m["收入"], 2), round(m["支出"], 2), round(m["净额"], 2),
+                       round(m["食材成本"], 2), round(m["毛利率"], 4),
+                       ("-" if m["净额环比"] is None else round(m["净额环比"], 4))] for m in months],
+                     [10, 12, 12, 12, 12, 10, 12])
+    numfmt(ws_month, ["B", "C", "D", "E"], MONEY_FMT)
+    numfmt(ws_month, ["F", "G"], PERCENT_FMT)
 
     # 现金日结
-    sheet("现金日结", ["日期", "现金收入", "现金支出", "日净额", "累计库存"],
-          [[c["日期"], round(c["现金收入"], 2), round(c["现金支出"], 2),
-            round(c["日净额"], 2), round(c["累计库存"], 2)] for c in cash],
-          [12, 12, 12, 12, 12])
+    ws_cash = sheet("现金日结", ["日期", "现金收入", "现金支出", "日净额", "累计库存"],
+                    [[c["日期"], round(c["现金收入"], 2), round(c["现金支出"], 2),
+                      round(c["日净额"], 2), round(c["累计库存"], 2)] for c in cash],
+                    [12, 12, 12, 12, 12])
+    numfmt(ws_cash, ["B", "C", "D", "E"], MONEY_FMT)
 
     # 经营小结
     ws = wb.create_sheet("经营小结")
@@ -253,17 +293,25 @@ def write_excel(path, rows, issues, cash, months, kpi):
         for c in row:
             c.alignment = Alignment(vertical="center")
 
+    out_dir = os.path.dirname(os.path.abspath(path))
+    os.makedirs(out_dir, exist_ok=True)
     wb.save(path)
 
 
 def main():
-    ap = argparse.ArgumentParser()
-    ap.add_argument("--src", default=os.path.join(BASE, "data", "raw_tickets.csv"))
-    ap.add_argument("--out", default=os.path.join(BASE, "out", "台账_v2.xlsx"))
+    ap = argparse.ArgumentParser(
+        description="AI 票据智能台账 v0.2：数据校验、现金日结、月度汇总并输出 Excel 台账。",
+        formatter_class=argparse.ArgumentDefaultsHelpFormatter)
+    ap.add_argument("--src", default=DEFAULT_SRC, help="票据流水 CSV 路径")
+    ap.add_argument("--out", default=DEFAULT_OUT, help="台账 Excel 输出路径")
+    ap.add_argument("--cash-begin", type=float, default=0.0, help="期初库存现金（现金日结累计起点）")
     args = ap.parse_args()
 
+    if not os.path.isfile(args.src):
+        ap.error("找不到数据文件：%s" % args.src)
+
     rows, issues = load(args.src)
-    cash = cash_check(rows, issues)
+    cash = cash_check(rows, issues, args.cash_begin)
     months = monthly(rows)
 
     income = sum(r["金额"] for r in rows if r["收付"] == "收")
