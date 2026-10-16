@@ -76,73 +76,110 @@ const money = v => v.toLocaleString('zh-CN', {minimumFractionDigits:2, maximumFr
 const axisStyle = {axisLine:{lineStyle:{color:'#d1d5db'}}, axisLabel:{color:'#6b7280', fontSize:11},
                    splitLine:{lineStyle:{color:'#f0f1f3'}}};
 
-// 1. 月度对比
-echarts.init(document.getElementById('c1')).setOption({
-  tooltip:{trigger:'axis'},
-  legend:{data:['收入','支出','净额'], bottom:0, textStyle:{fontSize:11}},
-  grid:{left:52, right:16, top:16, bottom:44},
-  xAxis:{type:'category', data:D.months.map(m=>m.月), ...axisStyle},
-  yAxis:{type:'value', ...axisStyle},
-  series:[
-    {name:'收入', type:'bar', barWidth:18, itemStyle:{color:'#2f6fed'}, data:D.months.map(m=>m.收入)},
-    {name:'支出', type:'bar', barWidth:18, itemStyle:{color:'#f59e0b'}, data:D.months.map(m=>m.支出)},
-    {name:'净额', type:'line', smooth:true, symbolSize:7, itemStyle:{color:'#059669'},
-     label:{show:true, fontSize:10, formatter:p=>money(p.value)}, data:D.months.map(m=>m.净额)}
-  ]
-});
+function showEmpty(el, msg){
+  if (!el) return;
+  el.innerHTML = '<div style="height:100%;display:flex;align-items:center;justify-content:center;color:#6b7280;font-size:13px">' + (msg || '暂无数据') + '</div>';
+}
+function initChart(id, hasData){
+  const el = document.getElementById(id);
+  if (!hasData) { showEmpty(el); return null; }
+  return echarts.init(el);
+}
 
-// 2. 支出结构
-echarts.init(document.getElementById('c2')).setOption({
-  tooltip:{trigger:'item', formatter:p=>p.name+'：'+money(p.value)+' 元（'+p.percent+'%）'},
-  legend:{bottom:0, type:'scroll', textStyle:{fontSize:11}},
-  series:[{type:'pie', radius:['38%','62%'], center:['50%','44%'],
-    itemStyle:{borderColor:'#fff', borderWidth:2},
-    label:{fontSize:11, formatter:'{b}\\n{d}%'},
-    data:D.accounts}]
-});
+const charts = [];
+if (typeof echarts === 'undefined') {
+  document.querySelectorAll('.chart').forEach(function(el){ showEmpty(el, 'ECharts 资源未加载'); });
+} else {
+  // 1. 月度对比
+  const c1 = initChart('c1', D.months.length);
+  if (c1) {
+    c1.setOption({
+      tooltip:{trigger:'axis'},
+      legend:{data:['收入','支出','净额'], bottom:0, textStyle:{fontSize:11}},
+      grid:{left:52, right:16, top:16, bottom:44},
+      xAxis:{type:'category', data:D.months.map(m=>m.月), ...axisStyle},
+      yAxis:{type:'value', ...axisStyle},
+      series:[
+        {name:'收入', type:'bar', barWidth:18, itemStyle:{color:'#2f6fed'}, data:D.months.map(m=>m.收入)},
+        {name:'支出', type:'bar', barWidth:18, itemStyle:{color:'#f59e0b'}, data:D.months.map(m=>m.支出)},
+        {name:'净额', type:'line', smooth:true, symbolSize:7, itemStyle:{color:'#059669'},
+         label:{show:true, fontSize:10, formatter:p=>money(p.value)}, data:D.months.map(m=>m.净额)}
+      ]
+    });
+    charts.push(c1);
+  }
 
-// 3. 每日收支
-echarts.init(document.getElementById('c3')).setOption({
-  tooltip:{trigger:'axis'},
-  legend:{data:['收入','支出','当日净额'], bottom:0, textStyle:{fontSize:11}},
-  grid:{left:52, right:16, top:16, bottom:44},
-  xAxis:{type:'category', data:D.daily.map(d=>d.日期.slice(5)), ...axisStyle},
-  yAxis:{type:'value', ...axisStyle},
-  series:[
-    {name:'收入', type:'bar', stack:'io', barWidth:14, itemStyle:{color:'#2f6fed'}, data:D.daily.map(d=>d.收入)},
-    {name:'支出', type:'bar', stack:'io', barWidth:14, itemStyle:{color:'#f59e0b'}, data:D.daily.map(d=>d.支出)},
-    {name:'当日净额', type:'line', smooth:true, symbolSize:5, itemStyle:{color:'#059669'},
-     data:D.daily.map(d=>+(d.收入-d.支出).toFixed(2))}
-  ]
-});
+  // 2. 支出结构
+  const c2 = initChart('c2', D.accounts.length);
+  if (c2) {
+    c2.setOption({
+      tooltip:{trigger:'item', formatter:p=>p.name+'：'+money(p.value)+' 元（'+p.percent+'%）'},
+      legend:{bottom:0, type:'scroll', textStyle:{fontSize:11}},
+      series:[{type:'pie', radius:['38%','62%'], center:['50%','44%'],
+        itemStyle:{borderColor:'#fff', borderWidth:2},
+        label:{fontSize:11, formatter:'{b}\\n{d}%'},
+        data:D.accounts}]
+    });
+    charts.push(c2);
+  }
 
-// 4. 现金日结与库存
-echarts.init(document.getElementById('c4')).setOption({
-  tooltip:{trigger:'axis'},
-  legend:{data:['现金收入','现金支出','累计库存'], bottom:0, textStyle:{fontSize:11}},
-  grid:{left:52, right:16, top:16, bottom:44},
-  xAxis:{type:'category', data:D.cash.map(c=>c.日期.slice(5)), ...axisStyle},
-  yAxis:{type:'value', ...axisStyle},
-  series:[
-    {name:'现金收入', type:'bar', barWidth:14, itemStyle:{color:'#93c5fd'}, data:D.cash.map(c=>c.现金收入)},
-    {name:'现金支出', type:'bar', barWidth:14, itemStyle:{color:'#fdba74'}, data:D.cash.map(c=>c.现金支出)},
-    {name:'累计库存', type:'line', smooth:true, symbolSize:6, itemStyle:{color:'#dc2626'},
-     areaStyle:{color:'rgba(220,38,38,.08)'},
-     markLine:{silent:true, symbol:'none', lineStyle:{color:'#dc2626', type:'dashed'},
-       data:[{yAxis:0, label:{formatter:'现金为零', fontSize:10}}]},
-     data:D.cash.map(c=>c.累计库存)}
-  ]
-});
+  // 3. 每日收支
+  const c3 = initChart('c3', D.daily.length);
+  if (c3) {
+    c3.setOption({
+      tooltip:{trigger:'axis'},
+      legend:{data:['收入','支出','当日净额'], bottom:0, textStyle:{fontSize:11}},
+      grid:{left:52, right:16, top:16, bottom:44},
+      xAxis:{type:'category', data:D.daily.map(d=>d.日期.slice(5)), ...axisStyle},
+      yAxis:{type:'value', ...axisStyle},
+      series:[
+        {name:'收入', type:'bar', stack:'io', barWidth:14, itemStyle:{color:'#2f6fed'}, data:D.daily.map(d=>d.收入)},
+        {name:'支出', type:'bar', stack:'io', barWidth:14, itemStyle:{color:'#f59e0b'}, data:D.daily.map(d=>d.支出)},
+        {name:'当日净额', type:'line', smooth:true, symbolSize:5, itemStyle:{color:'#059669'},
+         data:D.daily.map(d=>+(d.收入-d.支出).toFixed(2))}
+      ]
+    });
+    charts.push(c3);
+  }
+
+  // 4. 现金日结与库存
+  const c4 = initChart('c4', D.cash.length);
+  if (c4) {
+    c4.setOption({
+      tooltip:{trigger:'axis'},
+      legend:{data:['现金收入','现金支出','累计库存'], bottom:0, textStyle:{fontSize:11}},
+      grid:{left:52, right:16, top:16, bottom:44},
+      xAxis:{type:'category', data:D.cash.map(c=>c.日期.slice(5)), ...axisStyle},
+      yAxis:{type:'value', ...axisStyle},
+      series:[
+        {name:'现金收入', type:'bar', barWidth:14, itemStyle:{color:'#93c5fd'}, data:D.cash.map(c=>c.现金收入)},
+        {name:'现金支出', type:'bar', barWidth:14, itemStyle:{color:'#fdba74'}, data:D.cash.map(c=>c.现金支出)},
+        {name:'累计库存', type:'line', smooth:true, symbolSize:6, itemStyle:{color:'#dc2626'},
+         areaStyle:{color:'rgba(220,38,38,.08)'},
+         markLine:{silent:true, symbol:'none', lineStyle:{color:'#dc2626', type:'dashed'},
+           data:[{yAxis:0, label:{formatter:'现金为零', fontSize:10}}]},
+         data:D.cash.map(c=>c.累计库存)}
+      ]
+    });
+    charts.push(c4);
+  }
+}
 
 // 5. 待复核清单
 const tb = document.getElementById('tb');
-D.issues.forEach(function(i){
+if (!D.issues.length) {
   const tr = document.createElement('tr');
-  tr.innerHTML = '<td>'+(i.行号||'—')+'</td><td><span class="tag">'+i.类型+'</span></td><td>'+(i.说明||'')+'</td>';
+  tr.innerHTML = '<td colspan="3" style="color:#6b7280">暂无待复核记录</td>';
   tb.appendChild(tr);
-});
+} else {
+  D.issues.forEach(function(i){
+    const tr = document.createElement('tr');
+    tr.innerHTML = '<td>'+(i.行号||'—')+'</td><td><span class="tag">'+i.类型+'</span></td><td>'+(i.说明||'')+'</td>';
+    tb.appendChild(tr);
+  });
+}
 window.addEventListener('resize', function(){
-  document.querySelectorAll('.chart').forEach(function(el){ echarts.getInstanceByDom(el).resize(); });
+  charts.forEach(function(c){ c.resize(); });
 });
 </script>
 </body>
@@ -160,13 +197,19 @@ def kpi_card(label, value, warn=False):
 
 
 def main():
-    ap = argparse.ArgumentParser()
-    ap.add_argument("--src", default=os.path.join(BASE, "data", "raw_tickets_v2.csv"))
-    ap.add_argument("--out", default=os.path.join(BASE, "web", "dashboard_v2.html"))
+    ap = argparse.ArgumentParser(
+        description="生成 AI 票据智能台账 v0.2 经营看板（单页 HTML + 本地 ECharts）。",
+        formatter_class=argparse.ArgumentDefaultsHelpFormatter)
+    ap.add_argument("--src", default=os.path.join(BASE, "data", "raw_tickets_v2.csv"), help="票据流水 CSV 路径")
+    ap.add_argument("--out", default=os.path.join(BASE, "web", "dashboard_v2.html"), help="看板 HTML 输出路径")
+    ap.add_argument("--cash-begin", type=float, default=0.0, help="期初库存现金（现金日结累计起点）")
     args = ap.parse_args()
 
+    if not os.path.isfile(args.src):
+        ap.error("找不到数据文件：%s" % args.src)
+
     rows, issues = core.load(args.src)
-    cash = core.cash_check(rows, issues)
+    cash = core.cash_check(rows, issues, args.cash_begin)
     months = core.monthly(rows)
 
     income = sum(r["金额"] for r in rows if r["收付"] == "收")
@@ -219,6 +262,7 @@ def main():
                 .replace("__KPI__", KPI_TPL.format(cards="\n".join(cards)))
                 .replace("__DATA__", json.dumps(data, ensure_ascii=False)))
 
+    os.makedirs(os.path.dirname(os.path.abspath(args.out)), exist_ok=True)
     with open(args.out, "w", encoding="utf-8") as f:
         f.write(html)
     print("已生成：%s（%d 字节）" % (args.out, len(html.encode("utf-8"))))
