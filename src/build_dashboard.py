@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """生成门店经营可视化看板（单页 HTML + 本地 echarts，离线可用）"""
+import argparse
 import json
 import os
 import sys
@@ -8,10 +9,11 @@ import sys
 HERE = os.path.dirname(os.path.abspath(__file__))
 BASE = os.path.dirname(HERE)
 sys.path.insert(0, HERE)
-from build_ledger import load, summarize  # noqa: E402
+from build_ledger import SRC as LEDGER_SRC, load, summarize  # noqa: E402
 
 OUT_DIR = os.path.join(BASE, "web")
 OUT_HTML = os.path.join(OUT_DIR, "dashboard.html")
+DEFAULT_SHOP = "烤馒头店"
 
 TEMPLATE = r"""<!DOCTYPE html>
 <html lang="zh-CN">
@@ -52,7 +54,9 @@ TEMPLATE = r"""<!DOCTYPE html>
 const D = __DATA__;
 const money = n => n.toLocaleString('zh-CN',{minimumFractionDigits:2,maximumFractionDigits:2});
 document.getElementById('shop').textContent = D.shop + ' 经营看板';
-document.getElementById('sub').textContent = '统计区间 ' + D.range + ' ｜ 共 ' + D.kpi.days + ' 天 ｜ 票据 AI 识别 + 自动入账';
+document.getElementById('sub').textContent = D.days.length
+  ? '统计区间 ' + D.range + ' ｜ 共 ' + D.kpi.days + ' 天 ｜ 票据 AI 识别 + 自动入账'
+  : '暂无有效票据数据';
 const kpiList = [
   ['营业额合计', money(D.kpi.income) + ' 元'],
   ['支出合计', money(D.kpi.expense) + ' 元'],
@@ -66,63 +70,82 @@ document.getElementById('kpis').innerHTML = kpiList.map(function(k){
 }).join('');
 
 const base = {color:['#3b6cf6','#e8663c','#22a06b','#8b5cf6','#f4b740','#12b5cb'], textStyle:{fontSize:11}};
-const c1 = echarts.init(document.getElementById('c1'));
-c1.setOption(Object.assign({}, base, {
-  tooltip:{trigger:'axis'}, legend:{top:0,itemWidth:10,itemHeight:8,textStyle:{fontSize:11}},
-  grid:{left:46,right:12,top:34,bottom:26},
-  xAxis:{type:'category',data:D.days.map(function(d){return d.slice(5)}),axisLabel:{fontSize:10}},
-  yAxis:{type:'value',axisLabel:{fontSize:10}},
-  series:[
-    {name:'营业额',type:'bar',data:D.income,itemStyle:{borderRadius:[4,4,0,0]}},
-    {name:'支出',type:'bar',data:D.expense,itemStyle:{borderRadius:[4,4,0,0]}}
-  ]
-}));
+const charts = [];
+function emptyChart(el, msg){
+  el.innerHTML = '<div style="height:100%;display:flex;align-items:center;justify-content:center;color:#7c8798;font-size:13px">' + (msg || '暂无数据') + '</div>';
+}
+if (typeof echarts === 'undefined') {
+  document.querySelectorAll('.chart').forEach(function(el){ emptyChart(el, 'ECharts 资源未加载'); });
+} else if (!D.days.length) {
+  document.querySelectorAll('.chart').forEach(function(el){ emptyChart(el, '暂无票据数据'); });
+} else {
+  const c1 = echarts.init(document.getElementById('c1'));
+  c1.setOption(Object.assign({}, base, {
+    tooltip:{trigger:'axis'}, legend:{top:0,itemWidth:10,itemHeight:8,textStyle:{fontSize:11}},
+    grid:{left:46,right:12,top:34,bottom:26},
+    xAxis:{type:'category',data:D.days.map(function(d){return d.slice(5)}),axisLabel:{fontSize:10}},
+    yAxis:{type:'value',axisLabel:{fontSize:10}},
+    series:[
+      {name:'营业额',type:'bar',data:D.income,itemStyle:{borderRadius:[4,4,0,0]}},
+      {name:'支出',type:'bar',data:D.expense,itemStyle:{borderRadius:[4,4,0,0]}}
+    ]
+  }));
+  charts.push(c1);
 
-const c2 = echarts.init(document.getElementById('c2'));
-c2.setOption(Object.assign({}, base, {
-  tooltip:{trigger:'item',formatter:'{b}<br/>{c} 元 ({d}%)'},
-  legend:{bottom:0,itemWidth:10,itemHeight:8,textStyle:{fontSize:10}},
-  series:[{type:'pie',radius:['42%','68%'],center:['50%','42%'],
-    label:{fontSize:10,formatter:'{b}\n{d}%'},
-    data:D.acc}]
-}));
+  const c2el = document.getElementById('c2');
+  if (D.acc.length) {
+    const c2 = echarts.init(c2el);
+    c2.setOption(Object.assign({}, base, {
+      tooltip:{trigger:'item',formatter:'{b}<br/>{c} 元 ({d}%)'},
+      legend:{bottom:0,itemWidth:10,itemHeight:8,textStyle:{fontSize:10}},
+      series:[{type:'pie',radius:['42%','68%'],center:['50%','42%'],
+        label:{fontSize:10,formatter:'{b}\n{d}%'},
+        data:D.acc}]
+    }));
+    charts.push(c2);
+  } else {
+    emptyChart(c2el, '暂无支出数据');
+  }
 
-const c3 = echarts.init(document.getElementById('c3'));
-c3.setOption(Object.assign({}, base, {
-  tooltip:{trigger:'axis'}, legend:{top:0,itemWidth:10,itemHeight:8,textStyle:{fontSize:11}},
-  grid:{left:46,right:44,top:34,bottom:26},
-  xAxis:{type:'category',data:D.days.map(function(d){return d.slice(5)}),axisLabel:{fontSize:10}},
-  yAxis:[{type:'value',name:'净额',axisLabel:{fontSize:10}},
-         {type:'value',name:'毛利率%',axisLabel:{fontSize:10}}],
-  series:[
-    {name:'当日净额',type:'line',smooth:true,areaStyle:{opacity:.12},data:D.net},
-    {name:'毛利率%',type:'line',yAxisIndex:1,smooth:true,data:D.gross_rate}
-  ]
-}));
+  const c3 = echarts.init(document.getElementById('c3'));
+  c3.setOption(Object.assign({}, base, {
+    tooltip:{trigger:'axis'}, legend:{top:0,itemWidth:10,itemHeight:8,textStyle:{fontSize:11}},
+    grid:{left:46,right:44,top:34,bottom:26},
+    xAxis:{type:'category',data:D.days.map(function(d){return d.slice(5)}),axisLabel:{fontSize:10}},
+    yAxis:[{type:'value',name:'净额',axisLabel:{fontSize:10}},
+           {type:'value',name:'毛利率%',axisLabel:{fontSize:10}}],
+    series:[
+      {name:'当日净额',type:'line',smooth:true,areaStyle:{opacity:.12},data:D.net},
+      {name:'毛利率%',type:'line',yAxisIndex:1,smooth:true,data:D.gross_rate}
+    ]
+  }));
+  charts.push(c3);
 
-const c4 = echarts.init(document.getElementById('c4'));
-c4.setOption(Object.assign({}, base, {
-  tooltip:{trigger:'axis',axisPointer:{type:'shadow'}},
-  grid:{left:56,right:14,top:20,bottom:26},
-  xAxis:{type:'category',data:['总收入','总支出','净现金流'],axisLabel:{fontSize:11}},
-  yAxis:{type:'value',axisLabel:{fontSize:10}},
-  series:[{type:'bar',barWidth:'42%',
-    label:{show:true,position:'top',fontSize:11},
-    data:[
-      {value:D.kpi.income,itemStyle:{color:'#3b6cf6'}},
-      {value:D.kpi.expense,itemStyle:{color:'#e8663c'}},
-      {value:D.kpi.net,itemStyle:{color:'#22a06b'}}
-    ]}]
-}));
-window.addEventListener('resize',function(){[c1,c2,c3,c4].forEach(function(c){c.resize()})});
+  const c4 = echarts.init(document.getElementById('c4'));
+  c4.setOption(Object.assign({}, base, {
+    tooltip:{trigger:'axis',axisPointer:{type:'shadow'}},
+    grid:{left:56,right:14,top:20,bottom:26},
+    xAxis:{type:'category',data:['总收入','总支出','净现金流'],axisLabel:{fontSize:11}},
+    yAxis:{type:'value',axisLabel:{fontSize:10}},
+    series:[{type:'bar',barWidth:'42%',
+      label:{show:true,position:'top',fontSize:11},
+      data:[
+        {value:D.kpi.income,itemStyle:{color:'#3b6cf6'}},
+        {value:D.kpi.expense,itemStyle:{color:'#e8663c'}},
+        {value:D.kpi.net,itemStyle:{color:'#22a06b'}}
+      ]}]
+  }));
+  charts.push(c4);
+}
+window.addEventListener('resize',function(){charts.forEach(function(c){c.resize()})});
 </script>
 </body>
 </html>
 """
 
 
-def build(shop="烤馒头店"):
-    rows = load()
+def build(shop=DEFAULT_SHOP, src=LEDGER_SRC, out_html=OUT_HTML):
+    rows = load(src)
     s = summarize(rows)
     days = sorted(s["by_day"])
     income = s["income"]
@@ -150,14 +173,27 @@ def build(shop="烤馒头店"):
             "food_rate": round(s["food"] / income * 100, 1) if income else 0,
         },
     }
-    os.makedirs(OUT_DIR, exist_ok=True)
+    os.makedirs(os.path.dirname(os.path.abspath(out_html)), exist_ok=True)
     html = TEMPLATE.replace("__DATA__", json.dumps(data, ensure_ascii=False))
-    with open(OUT_HTML, "w", encoding="utf-8") as f:
+    with open(out_html, "w", encoding="utf-8") as f:
         f.write(html)
-    print("看板已生成：", OUT_HTML)
+    print("看板已生成：", out_html)
     print("KPI：", json.dumps(data["kpi"], ensure_ascii=False))
-    return OUT_HTML
+    return out_html
+
+
+def main():
+    ap = argparse.ArgumentParser(
+        description="生成门店经营可视化看板（单页 HTML + 本地 ECharts，离线可用）。",
+        formatter_class=argparse.ArgumentDefaultsHelpFormatter)
+    ap.add_argument("--src", default=LEDGER_SRC, help="票据流水 CSV 路径")
+    ap.add_argument("--out", default=OUT_HTML, help="看板 HTML 输出路径")
+    ap.add_argument("--shop", default=DEFAULT_SHOP, help="门店名称")
+    args = ap.parse_args()
+    if not os.path.isfile(args.src):
+        ap.error("找不到数据文件：%s" % args.src)
+    build(shop=args.shop, src=args.src, out_html=args.out)
 
 
 if __name__ == "__main__":
-    build()
+    main()
